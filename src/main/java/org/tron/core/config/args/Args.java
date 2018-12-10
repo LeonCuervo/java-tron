@@ -456,10 +456,10 @@ public class Args {
     } else if (config.hasPath("localwitness")) {
       INSTANCE.localWitnesses = new LocalWitnesses();
       List<String> localwitness = config.getStringList("localwitness");
-      if (localwitness.size() > 1) {
-        logger.warn("localwitness size must be one, get the first one");
-        localwitness = localwitness.subList(0, 1);
-      }
+      // if (localwitness.size() > 1) {
+      //   logger.warn("localwitness size must be one, get the first one");
+      //   localwitness = localwitness.subList(0, 1);
+      // }
       INSTANCE.localWitnesses.setPrivateKeys(localwitness);
       logger.debug("Got privateKey from config.conf");
     } else if (config.hasPath("localwitnesskeystore")) {
@@ -742,8 +742,6 @@ public class Args {
         config.hasPath("vm.vmTrace") ? config
             .getBoolean("vm.vmTrace") : false;
     initBackupProperty(config);
-
-
 
     logConfig();
   }

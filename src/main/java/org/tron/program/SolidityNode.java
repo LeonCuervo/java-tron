@@ -285,7 +285,7 @@ public class SolidityNode {
 
     logger.info("index switch is {}",
         BooleanUtils.toStringOnOff(BooleanUtils.toBoolean(cfgArgs.getStorage().getIndexSwitch())));
-    ch.qos.logback.classic.Logger root = (ch.qos.logback.classic.Logger)LoggerFactory
+    ch.qos.logback.classic.Logger root = (ch.qos.logback.classic.Logger) LoggerFactory
         .getLogger(Logger.ROOT_LOGGER_NAME);
     root.setLevel(Level.toLevel(cfgArgs.getLogLevel()));
 
@@ -302,6 +302,7 @@ public class SolidityNode {
       return;
     }
     Application appT = ApplicationFactory.create(context);
+    FullNode.mockWitness(context);
     FullNode.shutdown(appT);
 
     //appT.init(cfgArgs);

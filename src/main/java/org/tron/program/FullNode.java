@@ -1,22 +1,25 @@
 package org.tron.program;
 
 import ch.qos.logback.classic.Level;
+import com.google.protobuf.ByteString;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.support.DefaultListableBeanFactory;
+import org.springframework.context.ApplicationContext;
 import org.tron.common.application.Application;
 import org.tron.common.application.ApplicationFactory;
 import org.tron.common.application.TronApplicationContext;
 import org.tron.core.Constant;
+import org.tron.core.Wallet;
+import org.tron.core.capsule.AccountCapsule;
 import org.tron.core.config.DefaultConfig;
 import org.tron.core.config.args.Args;
+import org.tron.core.db.Manager;
 import org.tron.core.services.RpcApiService;
 import org.tron.core.services.WitnessService;
 import org.tron.core.services.http.FullNodeHttpApiService;
-import org.tron.core.services.http.solidity.SolidityNodeHttpApiService;
-import org.tron.core.services.interfaceOnSolidity.RpcApiServiceOnSolidity;
-import org.tron.core.services.interfaceOnSolidity.http.solidity.HttpApiOnSolidityService;
+import org.tron.protos.Protocol.AccountType;
 
 @Slf4j
 public class FullNode {
@@ -29,7 +32,8 @@ public class FullNode {
     Args.setParam(args, Constant.TESTNET_CONF);
     Args cfgArgs = Args.getInstance();
 
-    ch.qos.logback.classic.Logger root = (ch.qos.logback.classic.Logger)LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME);
+    ch.qos.logback.classic.Logger root = (ch.qos.logback.classic.Logger) LoggerFactory
+        .getLogger(Logger.ROOT_LOGGER_NAME);
     root.setLevel(Level.toLevel(cfgArgs.getLogLevel()));
 
     if (cfgArgs.isHelp()) {
@@ -51,6 +55,7 @@ public class FullNode {
 
     context.refresh();
     Application appT = ApplicationFactory.create(context);
+    mockWitness(context);
     shutdown(appT);
 
     // grpc api server
@@ -69,6 +74,57 @@ public class FullNode {
     appT.startup();
 
     rpcApiService.blockUntilShutdown();
+  }
+
+  public static void mockWitness(ApplicationContext context) {
+    Manager manager = context.getBean(Manager.class);
+    manager.getWitnessStore().getAllWitnesses().forEach(witnessCapsule -> {
+      manager.getWitnessStore().delete(witnessCapsule.getAddress().toByteArray());
+    });
+    String[] newAccount = {
+        "TRx2rc1v91HjUFdeBBgNSiqirctq94sAfA",
+        "TRxETQim3Jn5TYqLeAnpyF5XdQeg7NUcSJ",
+        "TRxUu1ZhEYsZw9AHyg8gXBmRSmUzaZPWaw",
+        "TRxgBU7HFTQvU6zPheLHphqpwhDKNxB6Rk",
+        "TRxscEvPTPFaCxBMuFVmzEybzZWJZM9eAB",
+        "TRx32uh7TQjdnLFKyWVPKJBfEn1XWjJtcm",
+        "TRxF8fZERk4XzQZe1SzvkS5nyNJ7x6tGZ5",
+        "TRxUztFKWdXy42MSdiHQoef5VLaXADMJp3",
+        "TRxh1GnspMRadaU37UzrRRpkME2EkwCHg4",
+        "TRxsiQ2vugWqY2JGr39NHqysAw5zHfWhpU",
+        "TRx3MZDxWzTBW3HYX3ZWGEBrvAC8upGA8C",
+        "TRxFANjAvztBibiqPRWgG841fVP12BCH7d",
+        "TRxVs5MRUy2yHn2kqwev81VjYwXBdYdXrD",
+        "TRxhePptGctYfCpxFCsLLAHUr1iShFkGC1",
+        "TRxtaoGBJeSwQJu5551cBhaw5sW3vaazuF",
+        "TRx3cWa892UxbCaoqCjidp3r946SLZ6U72",
+        "TRxFZ7TDgQGF8MfLxnjQ9EqL5WtEiUmTmH",
+        "TRxVyqGWNwiPCetP7EQTnukdsVGgMpXzwj",
+        "TRxinhH2wZa4zPCqgcUgEZTx3uYs9bFKuM",
+        "TRxtfixDf8e4MnZw6zRAVbL3isVnnaiq2o",
+        "TRx4sTiyZuDN8whJUyovHZNTk6UYdsqqwg",
+        "TRxFiLJp8i5YMQyG2rJFzNA9htaTc7wLcf",
+        "TRxXnVabXh8QzdPvAGigmyuYuC391hzmwL",
+        "TRxiyR3cJPwyMMpq3WQQF7xiRkNDLkyd9X",
+        "TRxu36iquybaSti8ZhVzZ2tPgK7NiXTrSn",
+        "TRx4znAxu5FWxb5ccVUX89TtZ8qWF2PM2b",
+        "TRxYCcQNn7U7RtN7ZqF36GQYhfMTKnoarw"
+    };
+
+    int idx = 0;
+    for (String acc : newAccount) {
+      byte[] address = Wallet.decodeFromBase58Check(acc);
+      AccountCapsule account = new AccountCapsule(ByteString.copyFrom(address), AccountType.Normal);
+      account.setBalance(9000000000000000000L);
+      account.addVotes(ByteString.copyFrom(address), 1_000_000_000_000L);
+      account.setFreeNetUsage(1_000_000_000_000L);
+      account.setFrozen(1_000_000_000_000L, 10000);
+      context.getBean(Manager.class).getAccountStore().put(address, account);
+      manager.insertWitness(address, idx++);
+    }
+    manager.getWitnessController().initWits();
+
+    manager.getDynamicPropertiesStore().saveMaintenanceTimeInterval(600000);
   }
 
   public static void shutdown(final Application app) {
