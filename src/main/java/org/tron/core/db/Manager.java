@@ -1597,8 +1597,12 @@ public class Manager {
   }
 
   public void rePush(TransactionCapsule tx) {
-    if (transactionStore.has(tx.getTransactionId().getBytes())) {
-      return;
+    try {
+      if (transactionStore.get(tx.getTransactionId().getBytes()) != null) {
+        return;
+      }
+    } catch (BadItemException e) {
+      e.printStackTrace();
     }
 
     try {
